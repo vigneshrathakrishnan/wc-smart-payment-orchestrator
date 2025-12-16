@@ -1,167 +1,146 @@
-Below is a **professional, MNC-grade README skeleton** tailored for your project.
-It is intentionally **clean, technical, and calm** — no marketing fluff.
+# WC Smart Payment Orchestrator (MVP)
 
-You can copy-paste this **as-is** into `README.md` and fill details tomorrow.
+A Stripe-first payment orchestration plugin for WooCommerce focused on **reliability, observability, and correctness** of card payments.
 
----
-
-```md
-# WooCommerce Smart Payment Orchestrator
-
-A Stripe-first payment orchestration layer for WooCommerce that improves payment reliability by intelligently handling transient failures, retries, and observability — without altering the customer checkout experience.
+This project is intentionally scoped as an **engineering MVP**, not a feature-heavy gateway replacement.
 
 ---
 
-## Problem Statement
+## 🎯 Problem Statement
 
-WooCommerce stores rely heavily on payment gateways for revenue, yet transient infrastructure issues such as network timeouts, API errors, and rate limiting can cause otherwise valid payments to fail.  
-Most gateway plugins surface these failures directly to the customer, resulting in lost conversions and poor observability for merchants.
+WooCommerce merchants rely on payment gateways like Stripe for high-volume transactions.  
+However, real-world payment flows exhibit:
 
-This project addresses that gap by introducing a lightweight orchestration layer focused on **correctness, resilience, and insight**.
+- Transient API failures (network, rate limits)
+- Ambiguous payment states (requires_action, retryable failures)
+- Limited visibility into payment lifecycle behavior
+- Tight coupling between WooCommerce order state and gateway responses
 
----
-
-## Project Goals
-
-- Recover payments that fail due to **transient infrastructure issues**
-- Maintain **WooCommerce-native order consistency**
-- Provide **clear observability** into payment attempts and retries
-- Keep customer experience unchanged
-- Remain extensible for future multi-gateway orchestration
+This plugin explores **how to improve payment robustness and insight without changing the customer checkout experience**.
 
 ---
 
-## Non-Goals
+## 🧠 MVP Philosophy
 
-- Replacing existing payment gateways
-- Implementing custom checkout UI
-- Handling bank-side declines via retries
-- Building a SaaS backend (out of scope for MVP)
+- **No UI disruption**
+- **No gateway replacement**
+- **No SaaS backend**
+- **No multi-gateway routing**
 
----
-
-## High-Level Architecture
-
-```
-
-WooCommerce Checkout
-|
-v
-Smart Orchestrator Gateway
-|
-v
-Stripe Adapter
-|
-v
-Stripe APIs & Webhooks
-
-```
-
-The orchestrator acts as a decision and coordination layer, delegating actual payment execution to Stripe while managing retries, health tracking, and analytics.
+This plugin works **alongside the official WooCommerce Stripe plugin** and focuses on orchestration concerns **after checkout submission**.
 
 ---
 
-## Supported Payment Methods (MVP)
+## ✅ MVP Scope (Locked)
 
-- Credit / Debit Cards (via Stripe)
-- Apple Pay (via Stripe)
-- Google Pay (via Stripe)
+### 1. Supported Gateway
+- Stripe (WooCommerce Stripe Gateway)
+- Payment method: **Card**  
+  (Apple Pay & Google Pay implicitly covered as Stripe card flows)
 
-All methods share the same backend orchestration flow.
+### 2. Retry Orchestration
+Retries are applied **only** for *transient, retry-safe failures*:
 
----
+- `api_error`
+- `rate_limit_error`
+- network / timeout errors
 
-## Retry Strategy (MVP Scope)
-
-Retries are attempted **only** for transient failures:
-
-- Stripe `api_error`
-- Stripe `rate_limit_error`
-- Network or timeout failures
+**Explicitly excluded from retry:**
+- Insufficient funds
+- Card declined
+- Fraud / Radar blocks
+- Authentication failures
 
 Retry characteristics:
-- Max retries: 1
-- Retry delay: < 3 seconds
-- Idempotency enforced
-- No retries for bank declines or authentication failures
+- Max: **1 retry**
+- Time-bounded (few seconds)
+- Fully transparent to customer
 
 ---
 
-## Observability & Analytics
+### 3. Payment Health Tracking
+Lightweight, in-plugin health signals derived from Stripe responses:
 
-The plugin records:
-- Payment attempts per order
-- Retry occurrences
-- Failure classifications
-- Total orchestration duration
+- Success vs failure ratio
+- Failure type classification
+- Retry attempts & outcomes
+- Stripe availability indicators (soft signals)
 
-Admin-side statistics include:
-- Percentage of payments recovered via retry
-- Average retry delay
-- Failure type distribution
+No external monitoring system required.
 
 ---
 
-## Engineering Principles
+### 4. Payment Analytics (Local Only)
+Collected per order / attempt:
 
-- SOLID-compliant design
-- Adapter pattern for gateway abstraction
-- Explicit failure classification
-- Idempotent payment handling
-- Minimal, deterministic scope
+- Payment intent lifecycle
+- Failure category
+- Retry applied (yes/no)
+- Final resolution status
 
----
-
-## Local Development
-
-- Docker-based WordPress environment
-- Stripe test mode
-- WooCommerce test orders
-- No live credentials required
-
-Detailed setup instructions will be added.
+Stored using WordPress / WooCommerce primitives only.
 
 ---
 
-## Testing & Quality
+### 5. Reconciliation Awareness (Not Re-implementation)
+This plugin **does not replace WooCommerce reconciliation**.
 
-- PHPUnit for unit and integration tests
-- PHPCS (WordPress + WooCommerce standards)
-- PHPStan for static analysis
-- CI via GitHub Actions
-
----
-
-## Status
-
-This project is currently under active development as an MVP.
+Instead, it:
+- Observes Stripe → WooCommerce state transitions
+- Logs webhook vs API response mismatches
+- Highlights edge cases for future enhancement
 
 ---
 
-## License
+## 🚫 Out of Scope (Intentional)
 
-MIT
-```
+- Multiple gateways (Razorpay, PayPal, etc.)
+- Gateway UI selection
+- Customer-facing payment method changes
+- Automated order state correction
+- Refunds, disputes, payouts
+- SaaS dashboards
 
 ---
 
-### Why this README works
+## 🧩 Architecture Overview
 
-* Reads like an **internal engineering doc**
-* Clear separation of goals vs non-goals
-* Signals architectural maturity
-* Recruiter-friendly without being salesy
+- **Adapter pattern** over Stripe gateway behavior
+- Strict separation of:
+  - Orchestration logic
+  - Gateway interaction
+  - Observability & logging
+- SOLID-compliant class design
+- Composer autoloading
+- Testable units (PHPUnit)
 
-Tomorrow, you’ll only need to:
+---
 
-* Add real Stripe observations
-* Add setup steps
-* Link to diagrams or logs
+## 🛠️ Engineering Standards
 
-If you want next, I can:
+- PHP 8+
+- WordPress Coding Standards (PHPCS)
+- PHPUnit for unit tests
+- Docker-based local environment
+- Git with PR-based workflow (even solo)
+- CI pipeline for lint + test
 
-* Review this after you add observations
-* Help write the **Architecture Decisions** section
-* Help convert this into a blog-ready case study
+---
 
-You’re setting this up correctly.
+## 🧪 Testing Strategy
+
+- Stripe test mode only
+- Controlled simulation of:
+  - Successful payments
+  - Insufficient funds
+  - Card declined
+  - Requires_action (3DS)
+  - Retry-eligible failures (mocked)
+
+---
+
+## 📦 Installation (Dev)
+
+```bash
+wp-content/plugins/
+└── wc-smart-payment-orchestrator/
