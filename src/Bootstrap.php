@@ -10,5 +10,13 @@ final class Bootstrap
     {
         // Register orchestration hooks
         StripeOrchestrator::register();
+
+        // $logger = wc_get_logger();
+
+        // $logger->debug(
+        //     \WCSPO\Debug\Ping::check(),
+        //     [ 'source' => 'wc-smart-payment-orchestrator' ]
+        // );
+
     }
 }

@@ -1,0 +1,19 @@
+{
+  "name": "rvigneshdev/wc-smart-payment-orchestrator",
+  "description": "Stripe-first payment orchestration for WooCommerce.",
+  "type": "wordpress-plugin",
+  "license": "MIT",
+  "require": {
+    "php": ">=8.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "WCSPO\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "WCSPO\\Tests\\": "tests/"
+    }
+  }
+}
