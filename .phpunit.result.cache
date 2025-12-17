@@ -1,0 +1,1 @@
+{"version":2,"defects":[],"times":{"WCSPO\\Tests\\Stripe\\StripePaymentResultTest::test_successful_payment_intent":0.001,"WCSPO\\Tests\\Stripe\\StripePaymentResultTest::test_insufficient_funds_is_not_retryable":0,"WCSPO\\Tests\\Stripe\\StripePaymentResultTest::test_api_error_is_retryable":0}}
