@@ -1,17 +1,24 @@
 <?php
 
+declare(strict_types=1);
+
 namespace WCSPO\Stripe;
 
 use WCSPO\Contracts\PaymentResultInterface;
 
 /**
- * Value object representing the outcome of a Stripe payment attempt.
+ * Immutable value object representing the outcome of a Stripe payment attempt.
  *
- * Built from real Stripe API responses (PaymentIntent / Charge).
- * No side effects. No WooCommerce coupling.
+ * - Built from real Stripe PaymentIntent responses
+ * - No WooCommerce coupling
+ * - No orchestration logic
+ * - Stripe-semantics only
  */
 final class StripePaymentResult implements PaymentResultInterface
 {
+    private const STATUS_SUCCEEDED = 'succeeded';
+    private const STATUS_REQUIRES_ACTION = 'requires_action';
+
     private string $status;
     private ?string $failureCode;
     private ?string $failureType;
@@ -23,26 +30,38 @@ final class StripePaymentResult implements PaymentResultInterface
         ?string $failureType,
         bool $retryable
     ) {
-        $this->status       = $status;
-        $this->failureCode  = $failureCode;
-        $this->failureType  = $failureType;
-        $this->retryable    = $retryable;
+        $this->status      = $status;
+        $this->failureCode = $failureCode;
+        $this->failureType = $failureType;
+        $this->retryable   = $retryable;
     }
 
     /**
-     * Factory from Stripe PaymentIntent response.
+     * Factory from Stripe PaymentIntent payload.
      */
     public static function fromPaymentIntent(array $pi): self
     {
         $status = $pi['status'] ?? 'unknown';
 
-        if ($status === 'succeeded') {
-            return new self('succeeded', null, null, false);
+        // Fully successful payment
+        if ($status === self::STATUS_SUCCEEDED) {
+            return new self(self::STATUS_SUCCEEDED, null, null, false);
         }
 
+        // Customer action required (3DS, SCA, etc.)
+        if ($status === self::STATUS_REQUIRES_ACTION) {
+            return new self(
+                self::STATUS_REQUIRES_ACTION,
+                null,
+                'customer_action_required',
+                false
+            );
+        }
+
+        // Failed with Stripe error payload
         $error = $pi['last_payment_error'] ?? null;
 
-        if (!$error) {
+        if (!$error || !is_array($error)) {
             return new self($status, null, null, false);
         }
 
@@ -53,13 +72,13 @@ final class StripePaymentResult implements PaymentResultInterface
             $status,
             $failureCode,
             $failureType,
-            self::isRetryableFailure($error)
+            self::isRetryableStripeError($error)
         );
     }
 
     public function isSuccessful(): bool
     {
-        return $this->status === 'succeeded';
+        return $this->status === self::STATUS_SUCCEEDED;
     }
 
     public function isRetryable(): bool
@@ -78,37 +97,25 @@ final class StripePaymentResult implements PaymentResultInterface
     }
 
     /**
-     * Retry rules derived strictly from Stripe semantics
-     * and validated against real logs.
+     * Stripe-level retry safety rules.
+     * These are NOT business rules — only Stripe semantics.
      */
-    private static function isRetryableFailure(array $error): bool
+    private static function isRetryableStripeError(array $error): bool
     {
         $type = $error['type'] ?? null;
         $code = $error['code'] ?? null;
 
-        // Retry-safe Stripe failures
+        // Retry-safe transient failures (from real logs)
         if (in_array($type, ['api_error', 'rate_limit_error'], true)) {
             return true;
         }
 
-        // Network / timeout class errors
+        // Network / timeout edge cases
         if ($code === 'lock_timeout') {
             return true;
         }
 
-        // Explicitly NOT retryable (from logs)
-        $nonRetryableCodes = [
-            'card_declined',
-            'insufficient_funds',
-            'fraudulent',
-            'authentication_required',
-            'generic_decline',
-        ];
-
-        if (in_array($code, $nonRetryableCodes, true)) {
-            return false;
-        }
-
+        // Explicit non-retryable failures
         return false;
     }
 }

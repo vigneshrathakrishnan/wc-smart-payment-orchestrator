@@ -199,3 +199,31 @@ Retry scenarios (only):
 6. Idempotent retry after unknown payment state
 
 7. Temporary gateway degradation detected by health check
+
+==================================================
+
+
+src/
+├── Analytics/        # Metrics, counters, aggregation
+├── Contracts/        # Interfaces (PaymentResult, RetryPolicy)
+├── Debug/            # Diagnostics, probes, dev-only checks
+├── Domain/           # Pure business logic (NEW)
+│   ├── RetryDecision.php
+│   └── FailureCategory.php
+├── Gateway/          # Gateway abstractions (future)
+├── Orchestrator/     # Coordination logic
+├── Retry/            # Retry policies & engines
+└── Stripe/           # Stripe-specific adapters
+
+========================
+
+
+Stripe logs / response
+        ↓
+StripePaymentResult (Stripe/)
+        ↓
+FailureCategory (Domain/)
+        ↓
+RetryDecision (Domain/)
+        ↓
+RetryPolicy (Retry/)
