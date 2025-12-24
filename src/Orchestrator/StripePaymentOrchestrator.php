@@ -13,17 +13,18 @@ use WCSPO\Contracts\FailureSimulationInterface;
 
 final class StripePaymentOrchestrator
 {
+    private ?FailureSimulationInterface $simulation;
+
     public function __construct(
         private RetryPolicyInterface $retryPolicy,
         ?FailureSimulationInterface $simulation = null
     ) {
-        $this->retryPolicy = $retryPolicy;
         $this->simulation = $simulation;
     }
 
     public function orchestrate(array $paymentIntent, int $attempt): PaymentOrchestrationResult
     {
-        // Stripe truth
+        // Stripe truth (observational, not decision-driving here)
         $stripeResult = StripePaymentResult::fromPaymentIntent($paymentIntent);
 
         // Success short-circuit
@@ -35,12 +36,12 @@ final class StripePaymentOrchestrator
             );
         }
 
-        // Domain failure classification
-        $failureCategory = $this->simulation?->isEnabled()
-            ? $this->simulation->simulate()
+        // Failure classification (simulation overrides Stripe)
+        $failureCategory = $this->simulation && $this->simulation->isEnabled()
+            ? ($this->simulation->simulate() ?? FailureCategory::UNKNOWN)
             : StripeFailureMapper::classify($paymentIntent);
 
-        // Retry decision (pure logic)
+        // Retry decision (pure domain logic)
         $shouldRetry = RetryDecision::shouldRetry(
             $failureCategory,
             $this->retryPolicy,
