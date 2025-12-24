@@ -23,19 +23,28 @@ final class FailureSimulation implements FailureSimulationInterface
     /**
      * Factory: build simulation config from persisted options.
      */
-    public static function fromOptions(array $options): self
+    public static function fromOptions(): self
     {
-        $enabled = (bool) ($options['enabled'] ?? false);
+        $enabled = (bool) get_option(
+            FailureSimulationOptions::ENABLED,
+            false
+        );
 
         if (!$enabled) {
             return new self(false, null);
         }
 
-        $rawCategory = $options['category'] ?? null;
+        $rawCategory = get_option(
+            FailureSimulationOptions::CATEGORY,
+            null
+        );
 
         $category = FailureCategory::tryFrom((string) $rawCategory);
 
-        return new self(true, $category);
+        return new self(
+            true,
+            $category ?? FailureCategory::UNKNOWN
+        );
     }
 
     public function isEnabled(): bool

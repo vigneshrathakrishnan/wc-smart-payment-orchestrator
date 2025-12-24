@@ -10,6 +10,8 @@ use WCSPO\Domain\RetryDecision;
 use WCSPO\Contracts\RetryPolicyInterface;
 use WCSPO\Domain\FailureCategory;
 use WCSPO\Contracts\FailureSimulationInterface;
+use WCSPO\Retry\SimpleRetryPolicy;
+use WCSPO\Debug\FailureSimulation;
 
 final class StripePaymentOrchestrator
 {
@@ -22,9 +24,23 @@ final class StripePaymentOrchestrator
         $this->simulation = $simulation;
     }
 
-    public function orchestrate(array $paymentIntent, int $attempt): PaymentOrchestrationResult
+    /**
+     * Factory used by WordPress runtime.
+     * Centralizes orchestration wiring.
+     */
+    public static function fromOptions(): self
     {
-        // Stripe truth (observational, not decision-driving here)
+        return new self(
+            new SimpleRetryPolicy(1),
+            FailureSimulation::fromOptions()
+        );
+    }
+
+    public function orchestrate(
+        array $paymentIntent,
+        int $attempt
+    ): PaymentOrchestrationResult {
+        // Stripe truth (observational)
         $stripeResult = StripePaymentResult::fromPaymentIntent($paymentIntent);
 
         // Success short-circuit
