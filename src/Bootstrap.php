@@ -14,7 +14,7 @@ final class Bootstrap
         StripeOrchestrator::register();
 
         // Register payment lifecycle listener
-        $listener = new \WCSPO\WooCommerce\PaymentLifecycleListener($logger, $stripeClient);
+        $listener = new \WCSPO\WooCommerce\PaymentLifecycleListener($logger);
         $listener->register();
 
         // $logger->debug(
