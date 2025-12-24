@@ -9,6 +9,7 @@ use WCSPO\Orchestrator\StripePaymentOrchestrator;
 use WCSPO\Contracts\RetryPolicyInterface;
 use WCSPO\Contracts\PaymentResultInterface;
 use WCSPO\Domain\FailureCategory;
+use WCSPO\Debug\FailureSimulation;
 
 final class StripePaymentOrchestratorTest extends TestCase
 {
@@ -119,4 +120,23 @@ final class StripePaymentOrchestratorTest extends TestCase
 
         $this->assertFalse($result->shouldRetry());
     }
+
+    public function test_simulated_retryable_failure_forces_retry(): void
+    {
+        $simulation = new FailureSimulation(
+            true,
+            FailureCategory::RETRYABLE_TRANSIENT
+        );
+
+        $orchestrator = new StripePaymentOrchestrator(
+            $this->retryPolicy(1),
+            $simulation
+        );
+
+        $result = $orchestrator->orchestrate([], 0);
+
+        $this->assertTrue($result->shouldRetry());
+    }
+
+
 }

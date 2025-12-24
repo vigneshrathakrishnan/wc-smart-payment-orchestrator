@@ -19,26 +19,6 @@ final class StripeFailureMapper
             return FailureCategory::CUSTOMER_ACTION_REQUIRED;
         }
 
-        // Stripe error object present
-        // if (isset($stripePayload['error'])) {
-        //     $error = $stripePayload['error'];
-
-        //     // Retryable Stripe errors
-        //     if (
-        //         in_array($error['type'] ?? null, [
-        //             'api_error',
-        //             'rate_limit_error',
-        //         ], true)
-        //     ) {
-        //         return FailureCategory::RETRYABLE_TRANSIENT;
-        //     }
-
-        //     // Card / issuer failures
-        //     if (($error['type'] ?? null) === 'card_error') {
-        //         return FailureCategory::HARD_DECLINE;
-        //     }
-        // }
-
         // last_payment_error (PaymentIntent-based failures)
         if (isset($stripePayload['last_payment_error'])) {
             $lpe = $stripePayload['last_payment_error'];
