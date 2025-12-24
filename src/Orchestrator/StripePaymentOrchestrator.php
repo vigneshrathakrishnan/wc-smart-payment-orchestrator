@@ -9,12 +9,17 @@ use WCSPO\Stripe\StripeFailureMapper;
 use WCSPO\Domain\RetryDecision;
 use WCSPO\Contracts\RetryPolicyInterface;
 use WCSPO\Domain\FailureCategory;
+use WCSPO\Contracts\FailureSimulationInterface;
 
 final class StripePaymentOrchestrator
 {
     public function __construct(
-        private RetryPolicyInterface $retryPolicy
-    ) {}
+        private RetryPolicyInterface $retryPolicy,
+        ?FailureSimulationInterface $simulation = null
+    ) {
+        $this->retryPolicy = $retryPolicy;
+        $this->simulation = $simulation;
+    }
 
     public function orchestrate(array $paymentIntent, int $attempt): PaymentOrchestrationResult
     {
@@ -31,7 +36,9 @@ final class StripePaymentOrchestrator
         }
 
         // Domain failure classification
-        $failureCategory = StripeFailureMapper::classify($paymentIntent);
+        $failureCategory = $this->simulation?->isEnabled()
+            ? $this->simulation->simulate()
+            : StripeFailureMapper::classify($paymentIntent);
 
         // Retry decision (pure logic)
         $shouldRetry = RetryDecision::shouldRetry(
